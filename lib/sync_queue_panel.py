@@ -266,36 +266,62 @@ def close_inactive_views(view_handling="nothing", document=None):
 
     del view_cache[:]
 
-    starting_view_id = DB.StartingViewSettings.GetStartingViewSettings(document).ViewId
-    starting_view = document.GetElement(starting_view_id)
+    try:
+        svs = DB.StartingViewSettings.GetStartingViewSettings(document)
+        starting_view_id = svs.ViewId if svs else None
+        starting_view = document.GetElement(starting_view_id) if starting_view_id else None
+    except Exception as ex:
+        logger.warn("Could not get starting view: {}".format(str(ex)))
+        starting_view = None
 
-    if starting_view:
+    if not starting_view:
+        logger.warn("No valid Starting View found. Skipping inactive-view handling.")
+        return
+
+    try:
         uidoc = HOST_APP.uidoc
         HOST_APP.uidoc.RequestViewChange(starting_view)
         uidoc.ActiveView = starting_view
-        all_open_views = uidoc.GetOpenUIViews()
-        for ui_view in all_open_views:
-            if view_handling == "reopen":
-                view_cache.append(ui_view.ViewId)
-            doc_view = document.GetElement(ui_view.ViewId)
-            if doc_view.Id != starting_view.Id:
-                ui_view.Close()
-    else:
-        forms.show_balloon("No Starting View Set", "No Starting View Set")
+
+        for ui_view in uidoc.GetOpenUIViews():
+            try:
+                doc_view = document.GetElement(ui_view.ViewId)
+                if not doc_view:
+                    continue
+
+                if view_handling == "reopen":
+                    view_cache.append(ui_view.ViewId)
+
+                if doc_view.Id != starting_view.Id:
+                    ui_view.Close()
+            except Exception as ex:
+                logger.warn("Failed processing open view: {}".format(str(ex)))
+    except Exception as ex:
+        logger.warn("Failed while closing inactive views: {}".format(str(ex)))
 
 
 def set_active_view(view):
     if not isinstance(view, DB.View):
         raise TypeError('Element [{}] is not a View!'.format(view.Id))
-    name = view.Name
+
+    try:
+        name = view.Name
+    except Exception:
+        name = None
+
+    safe_name = name if name else "<Unnamed View>"
+
     if view.ViewType != DB.ViewType.Internal and \
             view.ViewType != DB.ViewType.ProjectBrowser:
         revit.uidoc.ActiveView = view
-        logger.debug('Active View is: {}'.format(view.Name))
-        return name
+        logger.debug('Active View is: {}'.format(safe_name))
+        return safe_name
     else:
-        logger.info('View {} ({}) cannot be activated.'.format(name, view.ViewType))
-        return 'INTERNAL / PB: ' + name
+        logger.info('View {} ({}) cannot be activated.'.format(
+            safe_name,
+            view.ViewType
+        ))
+        return 'INTERNAL / PB: {}'.format(safe_name)
 
 
 class SyncExternalEventHandler(IExternalEventHandler):
@@ -342,14 +368,16 @@ class SyncExternalEventHandler(IExternalEventHandler):
 
             if view_handling == "reopen":
                 for v_id in view_cache:
-                    view = doc.GetElement(v_id)
                     try:
-                        set_active_view(view)
+                        view = doc.GetElement(v_id)
+                        if view:
+                            set_active_view(view)
                     except Exception:
-                        get_elementid_value = get_elementid_value_func()
-                        logger.warn(
-                            "Failed to reopen view {}".format(get_elementid_value(v_id))
-                        )
+                        try:
+                            get_elementid_value = get_elementid_value_func()
+                            logger.warn("Failed to reopen view {}".format(get_elementid_value(v_id)))
+                        except Exception:
+                            logger.warn("Failed to reopen cached view.")
 
             endtime = timer.get_time()
             endtime_hms = str(datetime.timedelta(seconds=endtime).seconds)
@@ -465,7 +493,19 @@ class SyncQueueDockablePanel(IDockablePaneProvider):
         first = queue[0]
         return first.get("username") == user and first.get("model") == model
 
+    def _is_pane_visible(self):
+        try:
+            if not self._uiapp:
+                return False
+            pane = self._uiapp.GetDockablePane(PANE_ID)
+            return pane.IsShown()
+        except Exception:
+            return False
+
     def refresh(self):
+        if not self._is_pane_visible():
+            return
+
         doc = self._get_active_doc()
 
         if not doc:
@@ -599,11 +639,16 @@ class SyncQueueDockablePanel(IDockablePaneProvider):
         def _tick():
             import time
             while self._auto_refresh:
-                time.sleep(10)
+                time.sleep(30)
+
                 if not self._auto_refresh or not self._page:
                     break
+
+                if not self._is_pane_visible():
+                    continue
+
                 try:
-                    self._page.Dispatcher.Invoke(
+                    self._page.Dispatcher.BeginInvoke(
                         DispatcherPriority.Background,
                         Action(self.refresh)
                     )
