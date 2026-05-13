@@ -92,7 +92,7 @@ MAX_CONNECTIONS = 4
 CONNECTOR_ASSOCIATION_MAP = [
     ('1_Voltage [V]',                  ['Voltage', 'Nominal Voltage']),
     ('1_Phase [Ph]',                   ['Number of Poles', 'Poles', 'Phase']),
-    ('1_Apparent Load',                ['Apparent Load', 'Load']),
+    ('1_Apparent Load',                ['Apparent Load', 'Apparent Power','Load']),
     ('1_Power Factor',                 ['Power Factor']),
     ('1_Connection Description [txt]', ['Connector Description']),
 ]
@@ -102,6 +102,9 @@ AUTO_ADD_PARAMS = [
     '1_Phase [Ph]',
     '1_FLA [A]',
     '1_Watt [W]',
+    '1_Apparent Load',
+    '1_Power Factor',
+    '1_Connection Description [txt]',
 ]
 
 SCHEDULE_PARAMETERS = {
