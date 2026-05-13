@@ -28,6 +28,10 @@ from System.Collections.ObjectModel import ObservableCollection
 
 from Autodesk.Revit.DB import FilteredElementCollector, ViewSheet
 from pyrevit import revit, forms
+
+lib_path = os.path.join(os.path.dirname(__file__), "..", "lib")
+sys.path.append(os.path.abspath(lib_path))
+
 from lib import project_paths
 
 __title__ = 'Dashboard'
