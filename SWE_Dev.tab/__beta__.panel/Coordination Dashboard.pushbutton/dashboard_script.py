@@ -28,7 +28,7 @@ from System.Windows.Data import Binding
 from System.Collections.ObjectModel import ObservableCollection
 
 from Autodesk.Revit.DB import FilteredElementCollector, ViewSheet
-from pyrevit import revit, forms
+from pyrevit import revit, forms, EXEC_PARAMS
 
 script_dir = os.path.dirname(EXEC_PARAMS.command_path)
 extension_root = os.path.abspath(
