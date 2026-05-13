@@ -41,6 +41,15 @@ if lib_dir not in sys.path:
 
 import project_paths
 
+DOC = revit.doc
+json_path = project_paths.get_dashboard_json_path(doc)
+
+if not json_path:
+    forms.alert(
+        "Dashboard launch cancelled.\nNo folder was selected.",
+        exitscript=True
+    )
+
 __title__ = 'Dashboard'
 __author__ = 'Evelyn Lutz'
 __doc__ = """
@@ -50,15 +59,6 @@ narrative tracking, completed-by users, completed timestamps,
 pencils down fields, narrative file paths, browse/open narrative buttons, 
 revision highlighting, and inline add-stage support.
 """
-
-DOC = revit.doc
-json_path = project_paths.get_dashboard_json_path(doc)
-
-if not json_path:
-    forms.alert(
-        "Dashboard launch cancelled.\nNo folder was selected.",
-        exitscript=True
-    )
 
 STATUS_OPTIONS = ['Not Started', 'In Progress', 'On Track', 'Needs Input', 'At Risk', 'Complete']
 DISC_KEYS = ['M', 'E', 'P']
