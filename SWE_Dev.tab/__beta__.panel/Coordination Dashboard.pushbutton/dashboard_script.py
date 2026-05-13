@@ -31,9 +31,22 @@ from pyrevit import revit, forms
 
 __title__ = 'Dashboard'
 __author__ = 'Evelyn Lutz'
-__doc__ = 'Project stage coordination dashboard with revision-level and sheet-level marker colors, revision-specific completion tracking, narrative tracking, completed-by users, completed timestamps, pencils down fields, narrative file paths, browse/open narrative buttons, revision highlighting, and inline add-stage support.'
+__doc__ = """
+Project stage coordination dashboard with revision-level and 
+sheet-level marker colors, revision-specific completion tracking, 
+narrative tracking, completed-by users, completed timestamps, 
+pencils down fields, narrative file paths, browse/open narrative buttons, 
+revision highlighting, and inline add-stage support.
+"""
 
 DOC = revit.doc
+json_path = project_paths.get_dashboard_json_path(doc)
+
+if not json_path:
+    forms.alert(
+        "Dashboard launch cancelled.\nNo folder was selected.",
+        exitscript=True
+    )
 
 STATUS_OPTIONS = ['Not Started', 'In Progress', 'On Track', 'Needs Input', 'At Risk', 'Complete']
 DISC_KEYS = ['M', 'E', 'P']
