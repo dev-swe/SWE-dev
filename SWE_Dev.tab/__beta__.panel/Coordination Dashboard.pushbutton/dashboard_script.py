@@ -41,7 +41,9 @@ if lib_dir not in sys.path:
 
 import project_paths
 
-DOC = revit.doc
+#DOC = revit.doc
+doc = revit.doc
+
 json_path = project_paths.get_dashboard_json_path(doc)
 
 if not json_path:
@@ -1550,7 +1552,7 @@ class DashboardWindow(object):
 
 
 def main():
-    dashboard = DashboardWindow(DOC)
+    dashboard = DashboardWindow(doc)
     dashboard.show()
 
 
