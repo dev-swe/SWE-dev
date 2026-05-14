@@ -39,7 +39,7 @@ TAB_DIR = os.path.dirname(PANEL_DIR)
 EXTENSION_DIR = os.path.dirname(TAB_DIR)
 LIB_DIR = os.path.join(EXTENSION_DIR, 'lib')
 
-CONFIG_FILE = os.path.join(EXTENSION_DIR, '_config.py')
+CONFIG_FILE = os.path.join(EXTENSION_DIR, 'config.py')
 
 if LIB_DIR not in sys.path:
     sys.path.insert(0, LIB_DIR)
