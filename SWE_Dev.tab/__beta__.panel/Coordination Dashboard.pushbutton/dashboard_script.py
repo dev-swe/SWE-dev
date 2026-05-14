@@ -30,27 +30,48 @@ from System.Collections.ObjectModel import ObservableCollection
 from Autodesk.Revit.DB import FilteredElementCollector, ViewSheet
 from pyrevit import revit, forms, EXEC_PARAMS
 
-script_dir = os.path.dirname(EXEC_PARAMS.command_path)
-extension_root = os.path.abspath(
-    os.path.join(script_dir, "..", "..", "..")
-)
-lib_dir = os.path.join(extension_root, "lib")
+# ==================== LOCAL CONFIG ====================
 
-if lib_dir not in sys.path:
-    sys.path.insert(0, lib_dir)
+SCRIPT_DIR = os.path.dirname(__file__)
+BUTTON_DIR = SCRIPT_DIR
+PANEL_DIR = os.path.dirname(BUTTON_DIR)
+TAB_DIR = os.path.dirname(PANEL_DIR)
+EXTENSION_DIR = os.path.dirname(TAB_DIR)
+LIB_DIR = os.path.join(EXTENSION_DIR, 'lib')
 
-import project_paths
+CONFIG_FILE = os.path.join(EXTENSION_DIR, '_config.py')
 
-#DOC = revit.doc
-doc = revit.doc
+if LIB_DIR not in sys.path:
+    sys.path.insert(0, LIB_DIR)
 
-json_path = project_paths.get_dashboard_json_path(doc)
 
-if not json_path:
+def _load_config():
+    ns = {}
+    if not os.path.exists(CONFIG_FILE):
+        forms.alert(
+            "Missing config.py at:\n{0}".format(CONFIG_FILE),
+            exitscript=True
+        )
+    try:
+        with io.open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            exec(f.read(), ns)
+    except Exception as ex:
+        forms.alert(
+            "Could not read config.py:\n{0}".format(ex),
+            exitscript=True
+        )
+    return ns
+
+_CONFIG = _load_config()
+PROJECTS_ROOT = _CONFIG.get('PROJECTS_ROOT')
+
+if not PROJECTS_ROOT:
     forms.alert(
-        "Dashboard launch cancelled.\nNo folder was selected.",
+        "PROJECTS_ROOT is missing in config.py",
         exitscript=True
     )
+
+doc = revit.doc
 
 __title__ = 'Dashboard'
 __author__ = 'Evelyn Lutz'
@@ -186,7 +207,7 @@ def _get_project_number_from_info(doc):
 
 
 def _get_project_folder_from_project_info(doc):
-    base_path = os.path.realpath('//SPR-NAS/Company/Projects/')
+    base_path = PROJECTS_ROOT
 
     if not doc:
         forms.alert('No Revit document open.', exitscript=True)
@@ -417,163 +438,6 @@ def create_default_dashboard(doc):
         'audit_log': []
     }
 
-
-# def _upgrade_legacy_structure(data):
-#     if not isinstance(data, dict):
-#         data = {}
-
-#     if 'revision_metadata' not in data or not isinstance(data.get('revision_metadata'), dict):
-#         data['revision_metadata'] = {}
-
-#     if 'sheet_revision_status' not in data or not isinstance(data.get('sheet_revision_status'), dict):
-#         data['sheet_revision_status'] = {}
-
-#     if 'audit_log' not in data or not isinstance(data.get('audit_log'), list):
-#         data['audit_log'] = []
-
-#     if 'stages' in data and isinstance(data.get('stages'), list):
-#         for stage in data.get('stages', []):
-#             if not isinstance(stage, dict):
-#                 continue
-#             if 'id' not in stage:
-#                 stage['id'] = ''
-#             if 'name' not in stage:
-#                 stage['name'] = ''
-#             if 'target_date' not in stage:
-#                 stage['target_date'] = ''
-#             if 'actual_date' not in stage:
-#                 stage['actual_date'] = ''
-#             if 'pencils_down' not in stage:
-#                 stage['pencils_down'] = ''
-#             if 'status' not in stage:
-#                 stage['status'] = 'Not Started'
-#             if 'owner' not in stage:
-#                 stage['owner'] = ''
-#             if 'notes' not in stage:
-#                 stage['notes'] = ''
-
-#     for rev_key, meta in data.get('revision_metadata', {}).items():
-#         if not isinstance(meta, dict):
-#             data['revision_metadata'][rev_key] = {
-#                 'key': str(rev_key),
-#                 'sequence': '',
-#                 'number': '',
-#                 'date': '',
-#                 'pencils_down': '',
-#                 'description': '',
-#                 'narrative': '',
-#                 'sheet_count': 0,
-#                 'marker_state': 'red'
-#             }
-#             continue
-
-#         if 'key' not in meta:
-#             meta['key'] = str(rev_key)
-#         if 'sequence' not in meta:
-#             meta['sequence'] = ''
-#         if 'number' not in meta:
-#             meta['number'] = ''
-#         if 'date' not in meta:
-#             meta['date'] = ''
-#         if 'pencils_down' not in meta:
-#             meta['pencils_down'] = ''
-#         if 'description' not in meta:
-#             meta['description'] = ''
-#         if 'narrative' not in meta:
-#             meta['narrative'] = ''
-#         if 'sheet_count' not in meta:
-#             meta['sheet_count'] = 0
-#         if 'marker_state' not in meta:
-#             meta['marker_state'] = 'red'
-
-#     status = data.get('sheet_revision_status', {})
-#     if not status:
-#         data['sheet_revision_status'] = {}
-#         return data
-
-#     sample_value = None
-#     for value in status.values():
-#         sample_value = value
-#         break
-
-#     if isinstance(sample_value, dict):
-#         nested_candidate = None
-#         for v in sample_value.values():
-#             nested_candidate = v
-#             break
-
-#         if isinstance(nested_candidate, dict) and (
-#             'complete' in nested_candidate or
-#             'narrative_complete' in nested_candidate or
-#             'completed_by' in nested_candidate or
-#             'completed_on' in nested_candidate
-#         ):
-#             for rev_key, sheet_map in status.items():
-#                 if not isinstance(sheet_map, dict):
-#                     status[rev_key] = {}
-#                     continue
-
-#                 for sheet_number, payload in sheet_map.items():
-#                     if isinstance(payload, dict):
-#                         if 'complete' not in payload:
-#                             payload['complete'] = False
-#                         if 'narrative_complete' not in payload:
-#                             payload['narrative_complete'] = bool(payload.get('narrative', False))
-#                         if 'completed_by' not in payload:
-#                             payload['completed_by'] = ''
-#                         if 'completed_on' not in payload:
-#                             payload['completed_on'] = ''
-#                     else:
-#                         sheet_map[sheet_number] = {
-#                             'complete': bool(payload),
-#                             'narrative_complete': False,
-#                             'completed_by': '',
-#                             'completed_on': ''
-#                         }
-#             return data
-
-#         if (
-#             'complete' in sample_value or
-#             'narrative_complete' in sample_value or
-#             'narrative' in sample_value or
-#             'completed_by' in sample_value or
-#             'completed_on' in sample_value
-#         ):
-#             legacy = status
-#             upgraded = {'legacy': {}}
-#             for sheet_number, payload in legacy.items():
-#                 if isinstance(payload, dict):
-#                     upgraded['legacy'][sheet_number] = {
-#                         'complete': bool(payload.get('complete', False)),
-#                         'narrative_complete': bool(
-#                             payload.get('narrative_complete', payload.get('narrative', False))
-#                         ),
-#                         'completed_by': payload.get('completed_by', ''),
-#                         'completed_on': payload.get('completed_on', '')
-#                     }
-#                 else:
-#                     upgraded['legacy'][sheet_number] = {
-#                         'complete': bool(payload),
-#                         'narrative_complete': False,
-#                         'completed_by': '',
-#                         'completed_on': ''
-#                     }
-#             data['sheet_revision_status'] = upgraded
-#             return data
-
-    # if isinstance(sample_value, bool):
-    #     legacy = status
-    #     upgraded = {'legacy': {}}
-    #     for sheet_number, payload in legacy.items():
-    #         upgraded['legacy'][sheet_number] = {
-    #             'complete': bool(payload),
-    #             'narrative_complete': False,
-    #             'completed_by': '',
-    #             'completed_on': ''
-    #         }
-    #     data['sheet_revision_status'] = upgraded
-
-    # return data
 
 def _upgrade_legacy_structure(data):
     if not isinstance(data, dict):
