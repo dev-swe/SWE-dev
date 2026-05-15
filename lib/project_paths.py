@@ -7,12 +7,9 @@ from pyrevit import forms
 
 # ==================== LOCAL CONFIG ====================
 
-SCRIPT_DIR = os.path.dirname(__file__)
-BUTTON_DIR = SCRIPT_DIR
-PANEL_DIR = os.path.dirname(BUTTON_DIR)
-TAB_DIR = os.path.dirname(PANEL_DIR)
-EXTENSION_DIR = os.path.dirname(TAB_DIR)
-LIB_DIR = os.path.join(EXTENSION_DIR, 'lib')
+SCRIPT_DIR = os.path.dirname(__file__)      # .../SWE-DEV/lib
+LIB_DIR = SCRIPT_DIR                        # lib/ is the script's own directory
+EXTENSION_DIR = os.path.dirname(LIB_DIR)    # .../SWE-DEV/  ← config.py lives here
 
 CONFIG_FILE = os.path.join(EXTENSION_DIR, 'config.py')
 
