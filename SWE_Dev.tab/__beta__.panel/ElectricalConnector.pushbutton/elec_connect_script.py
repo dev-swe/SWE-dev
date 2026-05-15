@@ -43,6 +43,7 @@ import clr
 import os
 import re
 import System
+import io
 
 clr.AddReference('RevitAPI')
 clr.AddReference('RevitAPIUI')
@@ -52,7 +53,6 @@ clr.AddReference('WindowsBase')
 clr.AddReference('System')
 clr.AddReference('System.Core')
 
-from io import open as io_open
 
 from System import EventArgs
 from System.Collections.ObjectModel import ObservableCollection
@@ -80,13 +80,48 @@ except ImportError:
 
 from pyrevit.forms import WPFWindow
 
-# ==================== CONSTANTS ====================
+# ==================== LOCAL CONFIG ====================
 
-FALLBACK_SP_FILE = (
-    r'\\SPR-NAS\Company\Engineering Operations\05 BIM'
-    r'\REVIT Library\00 Add-Ins & Shared Parameters'
-    r'\Shared Parameter\Systems West Shared Parameter File.txt'
-)
+SCRIPT_DIR = os.path.dirname(__file__)
+BUTTON_DIR = SCRIPT_DIR
+PANEL_DIR = os.path.dirname(BUTTON_DIR)
+TAB_DIR = os.path.dirname(PANEL_DIR)
+EXTENSION_DIR = os.path.dirname(TAB_DIR)
+LIB_DIR = os.path.join(EXTENSION_DIR, 'lib')
+
+CONFIG_FILE = os.path.join(EXTENSION_DIR, 'config.py')
+
+if LIB_DIR not in sys.path:
+    sys.path.insert(0, LIB_DIR)
+
+
+def _load_config():
+    ns = {}
+    if not os.path.exists(CONFIG_FILE):
+        forms.alert(
+            "Missing config.py at:\n{0}".format(CONFIG_FILE),
+            exitscript=True
+        )
+    try:
+        with io.open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            exec(f.read(), ns)
+    except Exception as ex:
+        forms.alert(
+            "Could not read config.py:\n{0}".format(ex),
+            exitscript=True
+        )
+    return ns
+
+_CONFIG = _load_config()
+FALLBACK_SP_FILE = _CONFIG.get('SP_FILE')
+
+if not FALLBACK_SP_FILE:
+    forms.alert(
+        "SP_FILE is missing in config.py",
+        exitscript=True
+    )
+
+# ==================== CONSTANTS ====================
 
 MAX_CONNECTIONS = 4
 
@@ -105,6 +140,11 @@ AUTO_ADD_PARAMS = [
     '1_Watt [W]',
     '1_Apparent Load',
     '1_Power Factor',
+    '1_Horsepower [hp]',
+    '1_MCA [A]',
+    '1_MOP [A]',
+    '1_Load Classification',
+    '1_MCA Factor [Num]',
     '1_Connection Description [txt]',
 ]
 
@@ -363,7 +403,7 @@ def get_project_shared_parameter_file(app, prompt_user=False):
 def read_txt_file_combined(filepath):
     group_dict, param_dict = {}, {}
     try:
-        with io_open(filepath, 'r', encoding='utf-16-le') as f:
+        with io.open(filepath, 'r', encoding='utf-16-le') as f:
             for line in f:
                 fields = line.strip().split('\t', 7)
                 if not fields or not fields[0]:
@@ -1451,7 +1491,7 @@ class AddSharedParamsView(WPFWindow):
                 os.remove(xaml_path)
         except Exception:
             pass
-        with io_open(xaml_path, 'w', encoding='utf-8') as f:
+        with io.open(xaml_path, 'w', encoding='utf-8') as f:
             f.write(_XAML)
         return xaml_path
 

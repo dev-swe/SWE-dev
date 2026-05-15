@@ -1,11 +1,51 @@
 # -*- coding: utf-8 -*-
 import os
+import io
 import glob
 
 from pyrevit import forms
 
+# ==================== LOCAL CONFIG ====================
 
-PROJECTS_ROOT = os.path.realpath(r"//SPR-NAS/Company/Projects")
+SCRIPT_DIR = os.path.dirname(__file__)
+BUTTON_DIR = SCRIPT_DIR
+PANEL_DIR = os.path.dirname(BUTTON_DIR)
+TAB_DIR = os.path.dirname(PANEL_DIR)
+EXTENSION_DIR = os.path.dirname(TAB_DIR)
+LIB_DIR = os.path.join(EXTENSION_DIR, 'lib')
+
+CONFIG_FILE = os.path.join(EXTENSION_DIR, 'config.py')
+
+if LIB_DIR not in sys.path:
+    sys.path.insert(0, LIB_DIR)
+
+
+def _load_config():
+    ns = {}
+    if not os.path.exists(CONFIG_FILE):
+        forms.alert(
+            "Missing config.py at:\n{0}".format(CONFIG_FILE),
+            exitscript=True
+        )
+    try:
+        with io.open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            exec(f.read(), ns)
+    except Exception as ex:
+        forms.alert(
+            "Could not read config.py:\n{0}".format(ex),
+            exitscript=True
+        )
+    return ns
+
+_CONFIG = _load_config()
+PROJECTS_ROOT = _CONFIG.get('PROJECTS_ROOT')
+
+if not PROJECTS_ROOT:
+    forms.alert(
+        "PROJECTS_ROOT is missing in config.py",
+        exitscript=True
+    )
+
 
 
 def get_swe_project_number(doc):

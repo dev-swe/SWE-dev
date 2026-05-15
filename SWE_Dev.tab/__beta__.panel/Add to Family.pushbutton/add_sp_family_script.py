@@ -1234,14 +1234,6 @@ class AddSharedParamsWindow(WPFWindow):
             self.sp_search_box.Text = 'Search shared parameters...'
             self.sp_search_box.Foreground = System.Windows.Media.Brushes.Gray
 
-    # def sp_search_changed(self, sender, args):
-    #     query = self.sp_search_box.Text.strip().lower()
-    #     if not query or query == 'search shared parameters...':
-    #         self._refresh_param_list()
-    #         return
-    #     matches = [n for n in self.sp_param_dict if query in n.lower()]
-    #     self._build_param_items(matches)
-
     # Replace sp_search_changed:
     def sp_search_changed(self, sender, args):
         self._search_timer.Stop()
