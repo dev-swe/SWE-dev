@@ -4,7 +4,6 @@ from __future__ import print_function
 import os
 import io
 import json
-import glob
 import clr
 import datetime
 import sys
@@ -70,6 +69,16 @@ if not PROJECTS_ROOT:
         "PROJECTS_ROOT is missing in config.py",
         exitscript=True
     )
+
+# ==================== SHARED LIB IMPORTS ====================
+# project_paths already lives in lib/ and provides all project-number /
+# CAD-folder / JSON-path resolution. No need to re-implement here.
+
+from project_paths import (
+    get_swe_project_number,
+    get_storage_folder,
+    get_dashboard_json_path,
+)
 
 doc = revit.doc
 
@@ -183,69 +192,21 @@ def _current_username():
 def _current_timestamp():
     return datetime.datetime.now().isoformat(timespec='seconds')
 
-def _pick_dashboard_folder(prompt):
-    selected_folder = forms.pick_folder(title=prompt)
-    if not selected_folder:
-        forms.alert(
-            'No folder was selected. Dashboard launch cancelled.',
-            exitscript=True
-        )
-    return selected_folder
 
-
-def _get_project_number_from_info(doc):
-    try:
-        project_info = doc.ProjectInformation
-        for param in project_info.Parameters:
-            if param.Definition and param.Definition.Name == 'SWE Project Number':
-                value = param.AsString()
-                if value:
-                    return value.strip()
-    except Exception:
-        pass
-    return ''
-
-
-def _get_project_folder_from_project_info(doc):
-    base_path = PROJECTS_ROOT
-
-    if not doc:
-        forms.alert('No Revit document open.', exitscript=True)
-
-    swe_project_number = _get_project_number_from_info(doc)
-
-    if not swe_project_number:
-        return _pick_dashboard_folder(
-            'Select folder for Coordination Dashboard files'
-        )
-
-    project_root = os.path.join(base_path, swe_project_number)
-
-    if not os.path.exists(project_root):
-        return _pick_dashboard_folder(
-            'Project folder not found. Select folder for Coordination Dashboard files'
-        )
-
-    cad_matches = [
-        p for p in glob.glob(os.path.join(project_root, '10 CAD*'))
-        if os.path.isdir(p)
-    ]
-
-    if not cad_matches:
-        return _pick_dashboard_folder(
-            "Could not find '10 CAD*'. Select folder for Coordination Dashboard files"
-        )
-
-    cad_matches.sort()
-    return cad_matches[0]
-
+# ---------- path helpers (now thin wrappers around project_paths) ----------
 
 def _default_json_path(doc):
-    title = doc.Title if doc else 'Project'
-    safe = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in title)
-    project_folder = _get_project_folder_from_project_info(doc)
-    return os.path.join(project_folder, safe + '_coordination_dashboard.json')
+    """Return the default JSON path for this project.
 
+    Delegates entirely to project_paths.get_dashboard_json_path(), which
+    handles SWE Project Number lookup, CAD folder resolution, and the
+    pick-folder fallback. This wrapper exists so the rest of the file can
+    continue calling _default_json_path without change.
+    """
+    return get_dashboard_json_path(doc)
+
+
+# ---------- sheet / revision helpers ----------
 
 def _sheet_metrics(doc):
     sheets = list(FilteredElementCollector(doc).OfClass(ViewSheet).ToElements())
@@ -415,7 +376,7 @@ def create_default_dashboard(doc):
     return {
         'project': {
             'name': doc.Title if doc else '',
-            'number': _get_project_number_from_info(doc),
+            'number': get_swe_project_number(doc) or '',
             'model_path': '',
             'last_updated': DateTime.Now.ToString('s')
         },
@@ -1136,7 +1097,6 @@ class DashboardWindow(object):
             except Exception:
                 pass
 
-    
     def _store_revision_metadata(self):
         self.data.setdefault('revision_metadata', {})
         for row in self.revision_rows:
@@ -1152,27 +1112,6 @@ class DashboardWindow(object):
                 'marker_state': row.marker_state or 'red'
             }
 
-    # def _store_sheet_revision_status(self):
-    #     self.data.setdefault('sheet_revision_status', {})
-    #     self._update_sheet_completion_metadata()
-
-    #     for row in self.sheet_rows:
-    #         try:
-    #             row.refresh_marker()
-    #             rev_key = str(row.revision_key)
-    #             sheet_number = row.sheet_number
-    #             if rev_key not in self.data['sheet_revision_status']:
-    #                 self.data['sheet_revision_status'][rev_key] = {}
-    #             self.data['sheet_revision_status'][rev_key][sheet_number] = {
-    #                 'complete': bool(row.revisions_complete),
-    #                 'narrative_complete': bool(row.narrative_complete),
-    #                 'completed_by': row.completed_by or '',
-    #                 'completed_on': row.completed_on or ''
-    #             }
-    #         except Exception:
-    #             pass
-
-    #     self._update_revision_markers()
     def _store_sheet_revision_status(self):
         self.data.setdefault('sheet_revision_status', {})
         self._update_sheet_completion_metadata()
@@ -1395,7 +1334,7 @@ class DashboardWindow(object):
         self._pull_ui_into_data()
         self.data['summary'] = _sheet_metrics(self.doc)
         self.data['project']['name'] = self.doc.Title if self.doc else self.data['project'].get('name', '')
-        self.data['project']['number'] = _get_project_number_from_info(self.doc)
+        self.data['project']['number'] = get_swe_project_number(self.doc) or ''
         add_audit(self.data, 'Synced from Revit')
 
         selected_key = self.selected_revision_key
