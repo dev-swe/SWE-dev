@@ -175,54 +175,9 @@ SCHEDULE_PARAMETERS = {
     'Special Requirements/Notes [txt]':                     'Electrical Analysis',
 }
 
-SPEC_TYPE_MAP = {
-    'Acceleration': 'Acceleration', 'AirFlow': 'Air Flow',
-    'AirFlowDensity': 'Air Flow Density',
-    'AirFlowDividedByCoolingLoad': 'Air Flow Divided By Cooling Load',
-    'AirFlowDividedByVolume': 'Air Flow Divided By Volume',
-    'Angle': 'Angle', 'AngularSpeed': 'Angular Speed',
-    'ApparentPower': 'Apparent Power', 'ApparentPowerDensity': 'Apparent Power Density',
-    'Area': 'Area', 'Bool': 'Yes/No', 'Boolean': 'Yes/No',
-    'CableTraySize': 'Cable Tray Size', 'ColorTemperature': 'Color Temperature',
-    'ConduitSize': 'Conduit Size', 'CoolingLoad': 'Cooling Load',
-    'Currency': 'Currency', 'Current': 'Current', 'Custom': 'Custom',
-    'DemandFactor': 'Demand Factor', 'Distance': 'Distance',
-    'DuctSize': 'Duct Size', 'Efficacy': 'Efficacy',
-    'ElectricalFrequency': 'Frequency', 'ElectricalPotential': 'Voltage',
-    'ElectricalPower': 'Power', 'ElectricalPowerDensity': 'Power Density',
-    'ElectricalResistivity': 'Electrical Resistivity',
-    'ElectricalTemperature': 'Temperature',
-    'ElectricalTemperatureDifference': 'Temperature Difference',
-    'Energy': 'Energy', 'Factor': 'Factor', 'Flow': 'Flow',
-    'Force': 'Force', 'HeatGain': 'Heat Gain', 'HeatingLoad': 'Heating Load',
-    'HvacDensity': 'HVAC Density', 'HvacEnergy': 'HVAC Energy',
-    'HvacFriction': 'HVAC Friction', 'HvacPower': 'HVAC Power',
-    'HvacPressure': 'HVAC Pressure', 'HvacTemperature': 'HVAC Temperature',
-    'HvacVelocity': 'HVAC Velocity', 'Illuminance': 'Illuminance',
-    'Image': 'Image', 'Integer': 'Integer', 'Int64': 'Integer',
-    'Length': 'Length', 'LinearForce': 'Linear Force',
-    'Luminance': 'Luminance', 'LuminousFlux': 'Luminous Flux',
-    'LuminousIntensity': 'Luminous Intensity', 'Mass': 'Mass',
-    'MassDensity': 'Mass Density', 'MassPerUnitArea': 'Mass Per Unit Area',
-    'Material': 'Material', 'Moment': 'Moment',
-    'MultilineText': 'Multiline Text', 'Number': 'Number',
-    'NumberOfPoles': 'Number of Poles', 'Period': 'Period',
-    'PipeDimension': 'Pipe Dimension', 'PipeSize': 'Pipe Size',
-    'PipingDensity': 'Piping Density', 'PipingPressure': 'Piping Pressure',
-    'PipingTemperature': 'Piping Temperature', 'PipingVelocity': 'Piping Velocity',
-    'PipingVolume': 'Piping Volume', 'PowerPerFlow': 'Power Per Flow',
-    'PowerPerLength': 'Power Per Length', 'Reference': 'Reference',
-    'Rotation': 'Rotation', 'SectionArea': 'Section Area',
-    'SectionDimension': 'Section Dimension', 'SectionModulus': 'Section Modulus',
-    'SheetLength': 'Sheet Length', 'Slope': 'Slope',
-    'SpecificHeat': 'Specific Heat', 'Speed': 'Speed', 'Stress': 'Stress',
-    'String': 'Text', 'ThermalConductivity': 'Thermal Conductivity',
-    'ThermalMass': 'Thermal Mass', 'ThermalResistance': 'Thermal Resistance',
-    'Time': 'Time', 'UnitWeight': 'Unit Weight', 'Url': 'URL',
-    'Volume': 'Volume', 'Wattage': 'Wattage', 'Weight': 'Weight',
-    'WeightPerUnitLength': 'Weight Per Unit Length', 'WireDiameter': 'Wire Diameter',
-    'YesNo': 'Yes/No', 'Text': 'Text', 'FamilyType': 'Family Type',
-}
+# ==================== SPEC TYPE ID MAPPING ====================
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'lib'))
+from spec_type_map import SPEC_TYPE_MAP, SPEC_PROPERTIES
 
 if _USE_FORGE:
     DEFAULT_PARAM_GROUP = GroupTypeId.ElectricalAnalysis
