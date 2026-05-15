@@ -187,10 +187,6 @@
         </Style>
 
         <!-- ── DataGrid cell styles ───────────────────────────────────────── -->
-        <Style x:Key="IndexColumnStyle" TargetType="DataGridCell">
-            <Setter Property="Foreground" Value="{StaticResource BrandGreen}"/>
-        </Style>
-
         <Style x:Key="DefaultColumnStyle" TargetType="DataGridCell">
             <Setter Property="ToolTip"      Value="{Binding tooltip}"/>
             <Setter Property="ContextMenu"  Value="{DynamicResource ItemContextMenu}"/>
@@ -349,11 +345,6 @@
                         </DockPanel>
                         <!-- Sheet Index row -->
                         <DockPanel Height="26" Margin="0,6,0,0">
-                            <Border Background="{StaticResource BrandGreen}" CornerRadius="4"
-                                    Padding="10,0,14,0" Margin="0,0,8,0">
-                                <TextBlock Text="{DynamicResource SheetIndex}" Foreground="White"
-                                           FontWeight="Medium" VerticalAlignment="Center"/>
-                            </Border>
                             <ComboBox x:Name="schedules_cb" SelectionChanged="sheetlist_changed">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
@@ -392,45 +383,20 @@
                                   Content="{DynamicResource ReversePrintOrder}"/>
 
                         <StackPanel x:Name="order_sp" Margin="0,8,0,0">
-                            <CheckBox x:Name="placeholder_cb" IsChecked="True"
-                                      Click="options_changed"
-                                      Content="{DynamicResource ShowNonPrintableSheets}"/>
-                            <CheckBox x:Name="indexspace_cb" Margin="0,6,0,0" IsChecked="True"
-                                      Click="options_changed"
-                                      Content="{DynamicResource IncludeNonPrintableInIndexing}"/>
-
-                            <!-- Index Digits -->
-                            <DockPanel Margin="0,8,0,0" Height="26">
-                                <TextBlock Text="{DynamicResource IndexDigits}"
-                                           Style="{StaticResource RowLabel}"/>
-                                <Slider x:Name="index_slider" Margin="8,0,0,0"
-                                        Minimum="3" Maximum="6"
-                                        TickPlacement="TopLeft"
-                                        IsSnapToTickEnabled="True"
-                                        IsMoveToPointEnabled="True"
-                                        ValueChanged="options_changed"
-                                        VerticalAlignment="Center"/>
-                            </DockPanel>
-
-                            <!-- Index Start -->
-                            <DockPanel Margin="0,6,0,0" Height="26">
-                                <TextBlock Text="{DynamicResource IndexStart}"
-                                           Style="{StaticResource RowLabel}"/>
-                                <Button Content="{DynamicResource Reset}" Width="56"
-                                        DockPanel.Dock="Right"
-                                        Style="{StaticResource StdButton}"
-                                        Click="rest_index"/>
-                                <TextBox x:Name="indexstart_tb" Text="0" Margin="8,0,6,0"
-                                         PreviewTextInput="validate_index_start"
-                                         TextChanged="options_changed"/>
-                            </DockPanel>
-
                             <!-- Sheet Lookup -->
                             <DockPanel Margin="0,6,0,0" Height="26">
                                 <TextBlock Text="Sheet Lookup"
                                            Style="{StaticResource RowLabel}"/>
                                 <TextBox x:Name="sheetsearch_tb" Margin="8,0,0,0"
                                          TextChanged="sheet_search_changed"/>
+                            </DockPanel>
+
+                            <!-- Revision Filter -->
+                            <DockPanel Margin="0,6,0,0" Height="26">
+                                <TextBlock Text="Revision Filter"
+                                           Style="{StaticResource RowLabel}"/>
+                                <ComboBox x:Name="revfilter_cb" Margin="8,0,0,0"
+                                          SelectionChanged="rev_filter_changed"/>
                             </DockPanel>
                         </StackPanel>
                     </StackPanel>
@@ -653,11 +619,6 @@
             </DataGrid.ColumnHeaderStyle>
 
             <DataGrid.Columns>
-                <DataGridTextColumn Header="{StaticResource PrintIndex}"
-                                    Binding="{Binding print_index}"
-                                    MinWidth="70" Width="70"
-                                    IsReadOnly="True"
-                                    CellStyle="{StaticResource IndexColumnStyle}"/>
                 <DataGridTextColumn Header="{StaticResource SheetNumber}"
                                     Binding="{Binding number}"
                                     MinWidth="100" Width="100"

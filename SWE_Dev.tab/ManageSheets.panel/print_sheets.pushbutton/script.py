@@ -94,6 +94,29 @@ NPC = u'\u200e'
 INDEX_FORMAT = '{{:0{digits}}}'
 
 
+# ── City Building Code Naming ─────────────────────────────────────────────
+DISCIPLINE_SORT = {
+    "F": "10",   # Fire Protection
+    "P": "11",   # Plumbing
+    "M": "12",   # Mechanical
+    "E": "13",   # Electrical
+    "T": "14",   # Telecommunications
+}
+_DISC_NUMBER_RE = re.compile(r'^([A-Za-z]+)-?(\d+)$')
+
+def _build_city_code_filename(sheet_number, sheet_name):
+    """Returns ##_D-XXX_SHEET_TITLE or '' if sheet_number is unparseable."""
+    m = _DISC_NUMBER_RE.match(sheet_number.strip())
+    if not m:
+        return ''
+    des, num = m.group(1).upper(), m.group(2)
+    sort  = DISCIPLINE_SORT.get(des, '99')
+    title = re.sub(r'[\\/:*?"<>|,]', '', sheet_name.strip().upper())
+    title = re.sub(r'\s*-\s*', '-', title)   # ← collapse spaces around dashes
+    title = re.sub(r'\s+', '_', title)        # ← remaining spaces → underscores
+    return '{sort}_{des}{num}_{title}'.format(sort=sort, des=des, num=num, title=title)
+
+
 EXPORT_ENCODING = 'utf_16_le'
 if HOST_APP.is_newer_than(2020):
     EXPORT_ENCODING = 'utf_8'
@@ -250,9 +273,6 @@ class PrintUtils:
             pass
         return None
 
-    # @staticmethod
-    # def get_dir():
-    #     return os.path.join(os.path.expanduser("~"), "Desktop", "pyRevit Print Folder")
 
     @staticmethod
     def get_dir(doc=None):
@@ -532,10 +552,6 @@ class EditNamingFormatsWindow(forms.WPFWindow):
     def get_default_formatters():
         return [
             NamingFormatter(
-                template='{index}',
-                desc='Print Index Number e.g. "0001"'
-            ),
-            NamingFormatter(
                 template='{number}',
                 desc='Sheet Number e.g. "A1.00"'
             ),
@@ -623,24 +639,35 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 desc='Value of Given Global Parameter. '
                      'Replace PARAM_NAME with target parameter name'
             ),
+            # Append to the returned list so it appears in the drag-and-drop panel:
+            NamingFormatter(
+                template='{city_code}',
+                desc='City Building Code Filename e.g. "11_P-101_PLUMBING_FLOOR_PLAN"'
+            ),
         ]
 
     @staticmethod
     def get_default_naming_formats():
         return [
+            # Append to the returned list alongside the existing three:
             NamingFormat(
-                name='0001 A1.00 1ST FLOOR PLAN.pdf',
-                template='{index} {number} {name}.pdf',
+                name='City of Eugene',
+                template='{city_code}.pdf',
                 builtin=True
             ),
             NamingFormat(
-                name='0001_A1.00_1ST FLOOR PLAN.pdf',
-                template='{index}_{number}_{name}.pdf',
+                name='A1.00 1ST FLOOR PLAN.pdf',
+                template='{number} {name}.pdf',
                 builtin=True
             ),
             NamingFormat(
-                name='0001-A1.00-1ST FLOOR PLAN.pdf',
-                template='{index}-{number}-{name}.pdf',
+                name='A1.00_1ST FLOOR PLAN.pdf',
+                template='{number}_{name}.pdf',
+                builtin=True
+            ),
+            NamingFormat(
+                name='A1.00-1ST FLOOR PLAN.pdf',
+                template='{number}-{name}.pdf',
                 builtin=True
             ),
         ]
@@ -881,13 +908,6 @@ class PrintSheetsWindow(forms.WPFWindow):
         self.project_info = revit.query.get_project_info(doc=revit.doc)
         self.sheet_cat_id = \
             revit.query.get_category(DB.BuiltInCategory.OST_Sheets).Id
-
-        # Set export_dir BEFORE _setup_docs_list so doclist_changed
-        # can safely reference it if SelectionChanged fires during init.
-        # self.export_dir = os.path.join(
-        #     PrintUtils.get_dir(revit.doc),
-        #     PrintUtils.get_folder("_PRINT")
-        # )
         self.export_dir = self._get_export_dir(revit.doc)
 
         self._setup_docs_list()
@@ -895,13 +915,11 @@ class PrintSheetsWindow(forms.WPFWindow):
         self._apply_projectinfo_naming_format_default()
         self._all_sheets_list = list(self.sheets_lb.ItemsSource) \
             if self.sheets_lb.ItemsSource else []
+        #self.revfilter_tb.Text = ''
+        self._populate_rev_filter()
 
         # Refresh path now that selected_doc is fully resolved
         doc = self.selected_doc
-        # self.export_dir = os.path.join(
-        #     PrintUtils.get_dir(doc),
-        #     PrintUtils.get_folder("_PRINT")
-        # )
         self.export_dir = self._get_export_dir(revit.doc)
         self.exportfolder_tb.Text = self.export_dir
         self.combined_pdf_name_tb.Text = self._default_combined_pdf_name()
@@ -994,7 +1012,59 @@ class PrintSheetsWindow(forms.WPFWindow):
         raw = "_".join(parts)
         return coreutils.cleanup_filename(raw, windows_safe=True) + ".pdf"
 
+    def _populate_rev_filter(self):
+        """Build the revision ComboBox from revisions present in the current sheet list,
+        ordered by revision sequence number descending (highest/most recent first)."""
+        seen = {}
+        for sheet in self._all_sheets_list:
+            rev = sheet.revision
+            if rev.is_set and rev.number not in seen:
+                try:
+                    rev_element = revit.query.get_current_sheet_revision(sheet.revit_sheet)
+                    sequence = rev_element.SequenceNumber if rev_element else 0
+                except Exception:
+                    sequence = 0
+                seen[rev.number] = (sequence, rev.desc)
+
+        sorted_revs = sorted(seen.items(), key=lambda x: x[1][0], reverse=True)
+
+        options = ['<All Revisions>']
+        for rev_num, (sequence, rev_desc) in sorted_revs:
+            label = '{} — {}'.format(rev_num, rev_desc) if rev_desc else rev_num
+            options.append(label)
+
+        self.revfilter_cb.ItemsSource = options
+        self.revfilter_cb.SelectedIndex = 0
+
+    def rev_filter_changed(self, sender, args):
+        self._apply_rev_filter()
+
+    def _apply_rev_filter(self):
+        search_text = self.sheetsearch_tb.Text.strip().lower()
+        rev_sel = self.revfilter_cb.SelectedItem
+
+        source = self._all_sheets_list
+
+        if search_text:
+            source = [
+                s for s in source
+                if search_text in (s.number or '').lower()
+                   or search_text in (s.name or '').lower()
+            ]
+
+        if rev_sel and rev_sel != '<All Revisions>':
+            # match on the number portion before the ' — '
+            rev_num = rev_sel.split(' — ')[0].strip().lower()
+            source = [
+                s for s in source
+                if s.revision.is_set
+                   and (s.revision.number or '').lower() == rev_num
+            ]
+
+        self.sheets_lb.ItemsSource = source
+
     def sheet_search_changed(self, sender, args):
+        self._apply_rev_filter()
         search_text = self.sheetsearch_tb.Text.strip().lower()
         if not self._all_sheets_list:
             return
@@ -1039,20 +1109,8 @@ class PrintSheetsWindow(forms.WPFWindow):
         return name if name else None
 
     @property
-    def show_placeholders(self):
-        return self.placeholder_cb.IsChecked
-
-    @property
-    def index_digits(self):
-        return int(self.index_slider.Value)
-
-    @property
-    def index_start(self):
-        return int(self.indexstart_tb.Text or 0)
-
-    @property
     def include_placeholders(self):
-        return self.indexspace_cb.IsChecked
+        return True  # index spacing removed; always include for sheet ordering purposes
 
     @property
     def selected_naming_format(self):
@@ -1719,7 +1777,7 @@ class PrintSheetsWindow(forms.WPFWindow):
         try:
             output_fname = \
                 template.format(
-                    index=sheet.print_index,
+                    #index=sheet.print_index,
                     number=sheet.number,
                     name=sheet.name,
                     name_dash=sheet.name.replace(' ', '-'),
@@ -1737,12 +1795,15 @@ class PrintSheetsWindow(forms.WPFWindow):
                     proj_status=self.project_info.status,
                     username=HOST_APP.username,
                     revit_version=HOST_APP.version,
+                    city_code=_build_city_code_filename(sheet.number, sheet.name),  # ← ADD
                 )
 
         except Exception as ferr:
             output_fname = ''
             if isinstance(ferr, KeyError):
                 self._set_error('Unknown key in selected naming format')
+                logger.warning('Unknown key %s in template: %s', ferr, template)
+                output_fname = 'Unknown_key_{}'.format(str(ferr).strip("'"))
         sheet.print_filename = output_fname
 
     def _update_print_filenames(self, sheet_list):
@@ -1825,13 +1886,13 @@ class PrintSheetsWindow(forms.WPFWindow):
             with revit.Transaction("Revert to Original Print Settings"):
                 print_mgr.PrintSetup.CurrentPrintSetting = self._init_psettings
 
-    def _update_index_slider(self):
-        index_digits = \
-            coreutils.get_integer_length(
-                len(self._scheduled_sheets) + self.index_start
-                )
-        self.index_slider.Minimum = max([index_digits, 2])
-        self.index_slider.Maximum = self.index_slider.Minimum + 3
+    # def _update_index_slider(self):
+    #     index_digits = \
+    #         coreutils.get_integer_length(
+    #             len(self._scheduled_sheets) + self.index_start
+    #             )
+    #     self.index_slider.Minimum = max([index_digits, 2])
+    #     self.index_slider.Maximum = self.index_slider.Minimum + 3
 
     def doclist_changed(self, sender, args):
         self._cached_workset_doc_hash = None  # ← invalidate cache on doc switch
@@ -1931,13 +1992,10 @@ class PrintSheetsWindow(forms.WPFWindow):
     def options_changed(self, sender, args):
         self._reset_error()
 
-        self._update_index_slider()
-
         sheet_list = [x for x in self._scheduled_sheets]
         if self.reverse_print:
             sheet_list.reverse()
 
-        # AFTER:
         if self.combine_cb.IsChecked:
             self.hide_element(self.order_sp)
             self.hide_element(self.namingformat_dp)
@@ -1955,22 +2013,7 @@ class PrintSheetsWindow(forms.WPFWindow):
             self.export_dwg.IsChecked = False
             self.export_dwg.IsEnabled = False
 
-        if not self.show_placeholders:
-            self.indexspace_cb.IsEnabled = True
-            self._update_print_indices(sheet_list)
-            printable_sheets = []
-            for sheet in sheet_list:
-                if sheet.printable:
-                    printable_sheets.append(sheet)
-            if not self.include_placeholders:
-                self._update_print_indices(printable_sheets)
-            self.sheet_list = printable_sheets
-        else:
-            self.indexspace_cb.IsChecked = True
-            self.indexspace_cb.IsEnabled = False
-            self._update_print_indices(sheet_list)
-            self.sheet_list = sheet_list
-
+        self.sheet_list = [s for s in sheet_list if s.printable]
         self._update_print_filenames(sheet_list)
 
     def set_sheet_printsettings(self, sender, args):
@@ -2019,11 +2062,11 @@ class PrintSheetsWindow(forms.WPFWindow):
             return self.enable_element(self.sheetopts_wp)
         self.disable_element(self.sheetopts_wp)
 
-    def validate_index_start(self, sender, args):
-        args.Handled = re.match(r'[^0-9]+', args.Text)
+    # def validate_index_start(self, sender, args):
+    #     args.Handled = re.match(r'[^0-9]+', args.Text)
 
-    def rest_index(self, sender, args):
-        self.indexstart_tb.Text = '0'
+    # def rest_index(self, sender, args):
+    #     self.indexstart_tb.Text = '0'
 
     def edit_formats(self, sender, args):
         editfmt_wnd = \
