@@ -1041,27 +1041,27 @@ class PrintSheetsWindow(forms.WPFWindow):
 
     def _apply_rev_filter(self):
         search_text = self.sheetsearch_tb.Text.strip().lower()
-        rev_sel = self.revfilter_cb.SelectedItem
+        rev_sel     = self.revfilter_cb.SelectedItem
 
-        source = self._all_sheets_list
+        # Use the current base list (already pruned for printable + reverse order)
+        source = list(getattr(self, '_base_sheet_list', self._scheduled_sheets))
 
         if search_text:
             source = [
                 s for s in source
                 if search_text in (s.number or '').lower()
-                   or search_text in (s.name or '').lower()
+                or search_text in (s.name   or '').lower()
             ]
 
         if rev_sel and rev_sel != '<All Revisions>':
-            # match on the number portion before the ' — '
             rev_num = rev_sel.split(' — ')[0].strip().lower()
             source = [
                 s for s in source
                 if s.revision.is_set
-                   and (s.revision.number or '').lower() == rev_num
+                and (s.revision.number or '').lower() == rev_num
             ]
 
-        self.sheets_lb.ItemsSource = source
+        self.sheet_list = source
 
     def sheet_search_changed(self, sender, args):
         self._apply_rev_filter()
@@ -2013,7 +2013,12 @@ class PrintSheetsWindow(forms.WPFWindow):
             self.export_dwg.IsChecked = False
             self.export_dwg.IsEnabled = False
 
-        self.sheet_list = [s for s in sheet_list if s.printable]
+        # Store the base filtered list for the rev filter to work from
+        self._base_sheet_list = [s for s in sheet_list if s.printable]
+
+        # Re-apply revision + search filters on top — preserves active selection
+        self._apply_rev_filter()
+
         self._update_print_filenames(sheet_list)
 
     def set_sheet_printsettings(self, sender, args):
@@ -2061,12 +2066,6 @@ class PrintSheetsWindow(forms.WPFWindow):
         if self.selected_printable_sheets:
             return self.enable_element(self.sheetopts_wp)
         self.disable_element(self.sheetopts_wp)
-
-    # def validate_index_start(self, sender, args):
-    #     args.Handled = re.match(r'[^0-9]+', args.Text)
-
-    # def rest_index(self, sender, args):
-    #     self.indexstart_tb.Text = '0'
 
     def edit_formats(self, sender, args):
         editfmt_wnd = \

@@ -390,6 +390,7 @@
                                 <TextBox x:Name="sheetsearch_tb" Margin="8,0,0,0"
                                          TextChanged="sheet_search_changed"/>
                             </DockPanel>
+                        </StackPanel>
 
                             <!-- Revision Filter -->
                             <DockPanel Margin="0,6,0,0" Height="26">
@@ -398,7 +399,6 @@
                                 <ComboBox x:Name="revfilter_cb" Margin="8,0,0,0"
                                           SelectionChanged="rev_filter_changed"/>
                             </DockPanel>
-                        </StackPanel>
                     </StackPanel>
                 </Border>
 
