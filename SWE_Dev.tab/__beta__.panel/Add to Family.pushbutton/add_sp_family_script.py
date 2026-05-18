@@ -59,7 +59,7 @@ from pyrevit.forms import WPFWindow
 # ==================== SPEC TYPE ID MAPPING ====================
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'lib'))
-from spec_type_map import SPEC_TYPE_MAP, SPEC_PROPERTIES
+from constants import SPEC_TYPE_MAP, SPEC_PROPERTIES
 
 # ==================== PARAMETER GROUPS ====================
 # Revit 2023+ replaced BuiltInParameterGroup with ForgeTypeId (GroupTypeId.*).
